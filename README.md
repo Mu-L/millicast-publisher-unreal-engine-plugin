@@ -1,4 +1,4 @@
-# MillicastPublisher plugin for Unreal Engine 4
+# MillicastPublisher plugin for Unreal Engine 4.27
 
 * Supported UE version 4.27
 * Supported on Windows and Linux
