@@ -21,15 +21,19 @@
 
 constexpr auto HTTP_OK = 200;
 
-// lambda check if the event is bound before broadcasting.
-auto MakeBroadcastEvent = [](auto&& Event) {
-	return [&Event](auto&& ... Args) {
-		if (Event.IsBound()) 
-		{
-			Event.Broadcast(std::forward<Args>()...);
-		}
-	};
-};
+FString ToString(EMillicastCodec Codec)
+{
+	switch (Codec)
+	{
+		default:
+		case EMillicastCodec::MC_VP8:
+			return TEXT("vp8");
+		case EMillicastCodec::MC_VP9:
+			return TEXT("vp9");
+		case EMillicastCodec::MC_H264:
+			return TEXT("h264");
+	}
+}
 
 UMillicastPublisherComponent::UMillicastPublisherComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -38,8 +42,9 @@ UMillicastPublisherComponent::UMillicastPublisherComponent(const FObjectInitiali
 	bIsPublishing = false;
 
 	// Event received from websocket signaling
-	EventBroadcaster.Emplace("active", MakeBroadcastEvent(OnActive));
-	EventBroadcaster.Emplace("inactive", MakeBroadcastEvent(OnInactive));
+	EventBroadcaster.Emplace("active", [this](TSharedPtr<FJsonObject> Msg) { ParseActiveEvent(Msg); });
+	EventBroadcaster.Emplace("inactive", [this](TSharedPtr<FJsonObject> Msg) { ParseInactiveEvent(Msg); });
+	EventBroadcaster.Emplace("viewercount", [this](TSharedPtr<FJsonObject> Msg) { ParseViewerCountEvent(Msg); });
 
 	PeerConnectionConfig = FWebRTCPeerConnection::GetDefaultConfig();
 }
@@ -107,10 +112,29 @@ void UMillicastPublisherComponent::SetupIceServersFromJson(TArray<TSharedPtr<FJs
 	}
 }
 
+void UMillicastPublisherComponent::ParseActiveEvent(TSharedPtr<FJsonObject> JsonMsg)
+{
+	OnActive.Broadcast();
+}
+
+void UMillicastPublisherComponent::ParseInactiveEvent(TSharedPtr<FJsonObject> JsonMsg)
+{
+	OnInactive.Broadcast();
+}
+
+void UMillicastPublisherComponent::ParseViewerCountEvent(TSharedPtr<FJsonObject> JsonMsg)
+{
+	auto DataJson = JsonMsg->GetObjectField("data");
+
+	int Count = DataJson->GetIntegerField("viewercount");
+
+	OnViewerCount.Broadcast(Count);
+}
+
 void UMillicastPublisherComponent::ParseDirectorResponse(FHttpResponsePtr Response)
 {
 	FString ResponseDataString = Response->GetContentAsString();
-	UE_LOG(LogMillicastPublisher, Log, TEXT("Director response : \n %S \n"), *ResponseDataString);
+	UE_LOG(LogMillicastPublisher, Log, TEXT("Director response : \n %s \n"), *ResponseDataString);
 
 	TSharedPtr<FJsonObject> ResponseDataJson;
 	auto JsonReader = TJsonReaderFactory<>::Create(ResponseDataString);
@@ -318,11 +342,11 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 
 		WS->Send(StringStream);
 
-		UE_LOG(LogMillicastPublisher, Log, TEXT("WebSocket publish payload : %S"), *StringStream);
+		UE_LOG(LogMillicastPublisher, Log, TEXT("WebSocket publish payload : %s"), *StringStream);
 	});
 
 	LocalDescriptionObserver->SetOnFailureCallback([this](const std::string& err) {
-		UE_LOG(LogMillicastPublisher, Error, TEXT("Set local description failed : %S"), *ToString(err));
+		UE_LOG(LogMillicastPublisher, Error, TEXT("Set local description failed : %s"), *ToString(err));
 		OnPublishingError.Broadcast(TEXT("Could not set local description"));
 	});
 
@@ -334,7 +358,7 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 		OnPublishing.Broadcast();
 	});
 	RemoteDescriptionObserver->SetOnFailureCallback([this](const std::string& err) {
-		UE_LOG(LogMillicastPublisher, Error, TEXT("Set remote description failed : %S"), *ToString(err));
+		UE_LOG(LogMillicastPublisher, Error, TEXT("Set remote description failed : %s"), *ToString(err));
 		OnPublishingError.Broadcast(TEXT("Could not set remote description"));
 	});
 
@@ -423,7 +447,10 @@ void UMillicastPublisherComponent::OnMessage(const FString& Msg)
 
 		UE_LOG(LogMillicastPublisher, Log, TEXT("Received event : %s"), *eventName);
 
-		EventBroadcaster[eventName]();
+		if (EventBroadcaster.Contains(eventName))
+		{
+			EventBroadcaster[eventName](ResponseJson);
+		}
 	}
 	else 
 	{

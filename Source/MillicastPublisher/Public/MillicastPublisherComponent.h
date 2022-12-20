@@ -23,6 +23,15 @@ DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FMillicastPublisherComponentP
 
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE(FMillicastPublisherComponentActive, UMillicastPublisherComponent, OnActive);
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE(FMillicastPublisherComponentInactive, UMillicastPublisherComponent, OnInactive);
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FMillicastPublisherComponentViewerCount, UMillicastPublisherComponent, OnViewerCount, int, Count);
+
+UENUM()
+enum class EMillicastCodec : uint8
+{
+	MC_VP8 UMETA(DisplayName="VP8"),
+	MC_VP9 UMETA(DisplayName="VP9"),
+	MC_H264 UMETA(DisplayName="H264"),
+};
 
 /**
 	A component used to publish audio, video feed to millicast.
@@ -34,7 +43,7 @@ class MILLICASTPUBLISHER_API UMillicastPublisherComponent : public UActorCompone
 	GENERATED_UCLASS_BODY()
 
 private:
-	TMap <FString, TFunction<void()>> EventBroadcaster;
+	TMap <FString, TFunction<void(TSharedPtr<FJsonObject>)>> EventBroadcaster;
 
 	/** The Millicast Media Source representing the configuration of the network source */
 	UPROPERTY(EditDefaultsOnly, Category = "Properties",
@@ -122,6 +131,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Components|Activation")
 	FMillicastPublisherComponentInactive OnInactive;
 
+	/** Called when the number of viewer watching the stream is updated */
+	UPROPERTY(BlueprintAssignable, Category = "Components|Activation")
+	FMillicastPublisherComponentViewerCount OnViewerCount;
+
 private:
 	/** Websocket callback */
 	bool StartWebSocketConnection(const FString& url, const FString& jwt);
@@ -139,6 +152,11 @@ private:
 	void ParseDirectorResponse(TSharedPtr<IHttpResponse, ESPMode::ThreadSafe> Response);
 	void SetupIceServersFromJson(TArray<TSharedPtr<FJsonValue>> IceServersField);
 
+	void ParseActiveEvent(TSharedPtr<FJsonObject> JsonMsg);
+	void ParseInactiveEvent(TSharedPtr<FJsonObject> JsonMsg);
+	void ParseViewerCountEvent(TSharedPtr<FJsonObject> JsonMsg);
+
+	void SetSimulcast(webrtc::RtpTransceiverInit& TransceiverInit);
 private:
 	/** WebSocket Connection */
 	TSharedPtr<IWebSocket> WS;
