@@ -37,6 +37,7 @@ FString ToString(EMillicastCodec Codec)
 
 UMillicastPublisherComponent::UMillicastPublisherComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
+	MillicastMediaSource = nullptr;
 	PeerConnection = nullptr;
 	WS = nullptr;
 	bIsPublishing = false;
@@ -167,7 +168,17 @@ void UMillicastPublisherComponent::ParseDirectorResponse(FHttpResponsePtr Respon
 */
 bool UMillicastPublisherComponent::Publish()
 {
-	if (!IsValid(MillicastMediaSource)) return false;
+	if (!IsValid(MillicastMediaSource))
+	{
+		UE_LOG(LogMillicastPublisher, Warning, TEXT("The MIllicats Media Source is not valid"));
+		return false;
+	}
+
+	if (IsPublishing())
+	{
+		UE_LOG(LogMillicastPublisher, Warning, TEXT("Millicast Publisher Component is already publishing"));
+		return false;
+	}
 	
 	UE_LOG(LogMillicastPublisher, Log, TEXT("Making HTTP director request"));
 	// Create an HTTP request
@@ -223,6 +234,7 @@ void UMillicastPublisherComponent::UnPublish()
 {
 	UE_LOG(LogMillicastPublisher, Display, TEXT("Unpublish"));
 	// Release peerconnection and stop capture
+
 	if(PeerConnection)
 	{
 		delete PeerConnection;
