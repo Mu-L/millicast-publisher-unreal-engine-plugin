@@ -19,6 +19,11 @@
 
 #include "Util.h"
 
+#include "Interfaces/IPluginManager.h"
+#include "Kismet/GameplayStatics.h"
+
+#define WEAK_CAPTURE WeakThis = TWeakObjectPtr<UMillicastPublisherComponent>(this)
+
 constexpr auto HTTP_OK = 200;
 
 FString ToString(EMillicastCodec Codec)
@@ -232,6 +237,8 @@ bool UMillicastPublisherComponent::PublishWithWsAndJwt(const FString& WsUrl, con
 */
 void UMillicastPublisherComponent::UnPublish()
 {
+	FScopeLock Lock(&CriticalSection);
+
 	UE_LOG(LogMillicastPublisher, Display, TEXT("Unpublish"));
 	// Release peerconnection and stop capture
 
@@ -294,7 +301,12 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 	auto * LocalDescriptionObserver  = PeerConnection->GetLocalDescriptionObserver();
 	auto * RemoteDescriptionObserver = PeerConnection->GetRemoteDescriptionObserver();
 
-	CreateSessionDescriptionObserver->SetOnSuccessCallback([this](const std::string& type, const std::string& sdp) {
+	CreateSessionDescriptionObserver->SetOnSuccessCallback([WEAK_CAPTURE](const std::string& type, const std::string& sdp) {
+		if (!WeakThis.IsValid())
+		{
+			return;
+		}
+
 		UE_LOG(LogMillicastPublisher, Display, TEXT("pc.createOffer() | sucess\nsdp : %S"), sdp.c_str());
 
 		const std::string s = "minptime=10;useinbandfec=1";
@@ -307,32 +319,46 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 			sdp_non_const.replace(sdp.find(s), s.size(), oss.str());
 		}
 
-		PeerConnection->SetLocalDescription(sdp_non_const, type);
+		// Set local description
+		{
+			FScopeLock Lock(&WeakThis->CriticalSection);
+			WeakThis->PeerConnection->SetLocalDescription(sdp_non_const, type);
+		}
 	});
 
-	CreateSessionDescriptionObserver->SetOnFailureCallback([this](const std::string& err) {
-		UE_LOG(LogMillicastPublisher, Error, TEXT("pc.createOffer() | Error: %S"), err.c_str());
-		OnPublishingError.Broadcast(TEXT("Could not create offer"));
+	CreateSessionDescriptionObserver->SetOnFailureCallback([WEAK_CAPTURE](const std::string& err) {
+		if (WeakThis.IsValid())
+		{
+			UE_LOG(LogMillicastPublisher, Error, TEXT("pc.createOffer() | Error: %S"), err.c_str());
+			WeakThis->OnPublishingError.Broadcast(TEXT("Could not create offer"));
+		}
 	});
 
-	LocalDescriptionObserver->SetOnSuccessCallback([this]() {
+	LocalDescriptionObserver->SetOnSuccessCallback([WEAK_CAPTURE]() {
+		if (!WeakThis.IsValid())
+		{
+			return;
+		}
+
+		FScopeLock Lock(&WeakThis->CriticalSection);
+
 		UE_LOG(LogMillicastPublisher, Log, TEXT("pc.setLocalDescription() | sucess"));
 
-		if (!WS || !WS.IsValid())
+		if (!WeakThis->WS || !WeakThis->WS.IsValid() || !WeakThis->PeerConnection)
 		{
 			UE_LOG(LogMillicastPublisher, Warning, TEXT("WebSocket is closed, can not send SDP"));
-			OnPublishingError.Broadcast(TEXT("Websocket is closed. Can not send SDP to server."));
+			WeakThis->OnPublishingError.Broadcast(TEXT("Websocket is closed. Can not send SDP to server."));
 
 			return;
 		}
 		 
 		std::string sdp;
-		(*PeerConnection)->local_description()->ToString(&sdp);
+		(*WeakThis->PeerConnection)->local_description()->ToString(&sdp);
 
 		// Add events we want to receive from millicast
 		TArray<TSharedPtr<FJsonValue>> eventsJson;
 		TArray<FString> EvKeys;
-		EventBroadcaster.GetKeys(EvKeys);
+		WeakThis->EventBroadcaster.GetKeys(EvKeys);
 
 		for (auto& ev : EvKeys) 
 		{
@@ -341,14 +367,14 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 
 		// Fill signaling data
 		auto DataJson = MakeShared<FJsonObject>();
-		DataJson->SetStringField("name", MillicastMediaSource->StreamName);
+		DataJson->SetStringField("name", WeakThis->MillicastMediaSource->StreamName);
 		DataJson->SetStringField("sdp", ToString(sdp));
 		DataJson->SetArrayField("events", eventsJson);
 
 		// If multisource feature
-		if (!MillicastMediaSource->SourceId.IsEmpty())
+		if (!WeakThis->MillicastMediaSource->SourceId.IsEmpty())
 		{
-			DataJson->SetStringField("sourceId", MillicastMediaSource->SourceId);
+			DataJson->SetStringField("sourceId", WeakThis->MillicastMediaSource->SourceId);
 		}
 
 		auto Payload = MakeShared<FJsonObject>();
@@ -361,26 +387,34 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 		auto Writer = TJsonWriterFactory<>::Create(&StringStream);
 		FJsonSerializer::Serialize(Payload, Writer);
 
-		WS->Send(StringStream);
+		WeakThis->WS->Send(StringStream);
 
 		UE_LOG(LogMillicastPublisher, Log, TEXT("WebSocket publish payload : %s"), *StringStream);
 	});
 
-	LocalDescriptionObserver->SetOnFailureCallback([this](const std::string& err) {
-		UE_LOG(LogMillicastPublisher, Error, TEXT("Set local description failed : %s"), *ToString(err));
-		OnPublishingError.Broadcast(TEXT("Could not set local description"));
+	LocalDescriptionObserver->SetOnFailureCallback([WEAK_CAPTURE](const std::string& err) {
+		if (WeakThis.IsValid())
+		{
+			UE_LOG(LogMillicastPublisher, Error, TEXT("Set local description failed : %s"), *ToString(err));
+			WeakThis->OnPublishingError.Broadcast(TEXT("Could not set local description"));
+		}
 	});
 
-	RemoteDescriptionObserver->SetOnSuccessCallback([this]() {
-		UE_LOG(LogMillicastPublisher, Log, TEXT("Set remote description suceeded"));
+	RemoteDescriptionObserver->SetOnSuccessCallback([WEAK_CAPTURE]() {
+		if (WeakThis.IsValid())
+		{
+			UE_LOG(LogMillicastPublisher, Log, TEXT("Set remote description suceeded"));
 
-		bIsPublishing = true;
-
-		OnPublishing.Broadcast();
+			WeakThis->bIsPublishing = true;
+			WeakThis->OnPublishing.Broadcast();
+		}
 	});
-	RemoteDescriptionObserver->SetOnFailureCallback([this](const std::string& err) {
+	RemoteDescriptionObserver->SetOnFailureCallback([WEAK_CAPTURE](const std::string& err) {
 		UE_LOG(LogMillicastPublisher, Error, TEXT("Set remote description failed : %s"), *ToString(err));
-		OnPublishingError.Broadcast(TEXT("Could not set remote description"));
+		if (WeakThis.IsValid())
+		{
+			WeakThis->OnPublishingError.Broadcast(TEXT("Could not set remote description"));
+		}
 	});
 
 	// Send only
@@ -449,6 +483,8 @@ void UMillicastPublisherComponent::OnMessage(const FString& Msg)
 	{
 		auto DataJson = ResponseJson->GetObjectField("data");
 		FString Sdp = DataJson->GetStringField("sdp");
+
+		FScopeLock Lock(&CriticalSection);
 		if (PeerConnection) 
 		{
 			PeerConnection->SetRemoteDescription(to_string(Sdp));
