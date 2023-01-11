@@ -4,6 +4,7 @@
 #include "Texture2DVideoSourceAdapter.h"
 #include "Texture2DFrameBuffer.h"
 #include "MillicastPublisherPrivate.h"
+#include "Stats.h"
 
 FTexture2DVideoSourceAdapter::FTexture2DVideoSourceAdapter() noexcept
 	: AsyncTextureReadback(MakeShared<FAsyncTextureReadback>())
@@ -29,6 +30,8 @@ void FTexture2DVideoSourceAdapter::OnFrameReady(const FTexture2DRHIRef& FrameBuf
 
 		rtc::AdaptedVideoTrackSource::OnFrame(Frame);
 
+
+		FPublisherStats::Get().FrameRendered();
 	});
 }
 

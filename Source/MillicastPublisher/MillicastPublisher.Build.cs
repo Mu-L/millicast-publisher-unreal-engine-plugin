@@ -12,9 +12,9 @@ namespace UnrealBuildTool.Rules
 		{
 			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 			PrivatePCHHeaderFile = "Private/PCH.h";
+            CppStandard = CppStandardVersion.Cpp17;
 
-
-			DynamicallyLoadedModuleNames.AddRange(
+            DynamicallyLoadedModuleNames.AddRange(
 				new string[] {
 					"Media",
 				});
