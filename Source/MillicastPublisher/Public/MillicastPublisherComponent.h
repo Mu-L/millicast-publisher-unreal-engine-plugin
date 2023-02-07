@@ -29,14 +29,6 @@ DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE(FMillicastPublisherComponentActive, UM
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE(FMillicastPublisherComponentInactive, UMillicastPublisherComponent, OnInactive);
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FMillicastPublisherComponentViewerCount, UMillicastPublisherComponent, OnViewerCount, int, Count);
 
-UENUM()
-enum class EMillicastCodec : uint8
-{
-	MC_VP8 UMETA(DisplayName="VP8"),
-	MC_VP9 UMETA(DisplayName="VP9"),
-	MC_H264 UMETA(DisplayName="H264"),
-};
-
 /**
 	A component used to publish audio, video feed to millicast.
 */
@@ -54,6 +46,12 @@ private:
 			  META = (DisplayName = "Millicast Publisher Source", AllowPrivateAccess = true))
 	UMillicastPublisherSource* MillicastMediaSource = nullptr;
 
+	/** Whether you want to automute the tracks when the number of viewer reach 0 
+	* And unmute them when there are viewer watching the stream.
+	*/
+	UPROPERTY(EditDefaultsOnly, Category = "Properties", META = (DisplayName = "Automute"))
+	bool Automute = false;
+	
 public:
 	~UMillicastPublisherComponent();
 
