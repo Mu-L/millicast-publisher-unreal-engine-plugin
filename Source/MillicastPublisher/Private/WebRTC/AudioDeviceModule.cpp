@@ -4,6 +4,9 @@
 #include "MillicastPublisherPrivate.h"
 #include "common_audio/include/audio_util.h"
 
+namespace MillicastPublisher
+{
+
 const char FAudioDeviceModule::kTimerQueueName[] = "FAudioDeviceModuleTimer";
 
 FAudioDeviceModule::FAudioDeviceModule(webrtc::TaskQueueFactory* TaskQueueFactory) noexcept
@@ -277,4 +280,6 @@ void FAudioDeviceModule::Send()
 			TaskQueue.PostDelayedTask([this]() { Send(); }, int32_t(wait_time));
 		}
 	}
+}
+
 }

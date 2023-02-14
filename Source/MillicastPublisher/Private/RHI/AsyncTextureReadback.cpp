@@ -5,6 +5,9 @@
 #include "ScreenRendering.h"
 #include "Runtime/Renderer/Private/ScreenPass.h"
 
+namespace MillicastPublisher
+{
+
 FAsyncTextureReadback::~FAsyncTextureReadback()
 {
 	GDynamicRHI->RHIUnmapStagingSurface(ReadbackTexture);
@@ -131,4 +134,6 @@ void FAsyncTextureReadback::Initialize(FTexture2DRHIRef Texture)
 		MappedStride = BufferWidth;
 	}
 	
+}
+
 }

@@ -6,23 +6,28 @@
 #include "RHI.h"
 #include "RHI/AsyncTextureReadback.h"
 
-/** Video Source adapter to create webrtc video frame from a Texture 2D and push it into webrtc pipelines */
-class FTexture2DVideoSourceAdapter : public rtc::AdaptedVideoTrackSource
+namespace MillicastPublisher
 {
-public:
-	FTexture2DVideoSourceAdapter() noexcept;
-	~FTexture2DVideoSourceAdapter() = default;
 
-	void OnFrameReady(const FTexture2DRHIRef& FrameBuffer);
+	/** Video Source adapter to create webrtc video frame from a Texture 2D and push it into webrtc pipelines */
+	class FTexture2DVideoSourceAdapter : public rtc::AdaptedVideoTrackSource
+	{
+	public:
+		FTexture2DVideoSourceAdapter() noexcept;
+		~FTexture2DVideoSourceAdapter() = default;
 
-	webrtc::MediaSourceInterface::SourceState state() const override;
-	absl::optional<bool> needs_denoising() const override { return false; }
-	bool is_screencast() const override { return false; }
-	bool remote() const override { return false; }
+		void OnFrameReady(const FTexture2DRHIRef& FrameBuffer);
 
-private:
-	bool AdaptVideoFrame(int64 TimestampUs, FIntPoint Resolution);
+		webrtc::MediaSourceInterface::SourceState state() const override;
+		absl::optional<bool> needs_denoising() const override { return false; }
+		bool is_screencast() const override { return false; }
+		bool remote() const override { return false; }
 
-	FCriticalSection CriticalSection;
-	TSharedPtr<FAsyncTextureReadback> AsyncTextureReadback;
-};
+	private:
+		bool AdaptVideoFrame(int64 TimestampUs, FIntPoint Resolution);
+
+		FCriticalSection CriticalSection;
+		TSharedPtr<FAsyncTextureReadback> AsyncTextureReadback;
+	};
+
+}

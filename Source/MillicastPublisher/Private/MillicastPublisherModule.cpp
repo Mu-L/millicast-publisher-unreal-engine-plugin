@@ -31,7 +31,7 @@ public:
 	virtual void StartupModule() override
 	{
 #if PLATFORM_WINDOWS
-		WasapiDeviceCapture::ColdInit();
+		MillicastPublisher::WasapiDeviceCapture::ColdInit();
 #endif
 
 		if (GDynamicRHI)
@@ -45,7 +45,7 @@ public:
 	virtual void ShutdownModule() override 
 	{
 #if PLATFORM_WINDOWS
-		WasapiDeviceCapture::ColdExit();
+		MillicastPublisher::WasapiDeviceCapture::ColdExit();
 #endif
 	}
 

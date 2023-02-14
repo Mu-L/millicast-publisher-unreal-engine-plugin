@@ -105,7 +105,7 @@ void UMillicastPublisherSource::SetAudioDeviceByName(FString Name)
 void UMillicastPublisherSource::RefreshAudioDevicesList()
 {
 	CaptureDevicesName.Empty();
-	auto& CaptureDevices = AudioDeviceCapture::GetCaptureDevicesAvailable();
+	auto& CaptureDevices = MillicastPublisher::AudioDeviceCapture::GetCaptureDevicesAvailable();
 
 	for (auto& elt : CaptureDevices)
 	{
@@ -118,7 +118,7 @@ void UMillicastPublisherSource::SetVolumeMultiplier(float f)
 	VolumeMultiplier = f;
 	if (AudioSource) 
 	{
-		auto* src = static_cast<AudioDeviceCapture*>(AudioSource.Get());
+		auto* src = static_cast<MillicastPublisher::AudioDeviceCapture*>(AudioSource.Get());
 		src->SetVolumeMultiplier(f);
 	}
 }
@@ -191,13 +191,13 @@ void UMillicastPublisherSource::StartCapture(TFunction<void(IMillicastSource::FS
 
 		if (AudioCaptureType == AudioCapturerType::DEVICE)
 		{
-			auto source = static_cast<AudioDeviceCapture*>(AudioSource.Get());
+			auto source = static_cast<MillicastPublisher::AudioDeviceCapture*>(AudioSource.Get());
 			source->SetAudioCaptureDevice(CaptureDeviceIndex);
 			source->SetVolumeMultiplier(VolumeMultiplier);
 		}
 		else if (AudioCaptureType == AudioCapturerType::SUBMIX)
 		{
-			auto source = static_cast<AudioGameCapturer*>(AudioSource.Get());
+			auto source = static_cast<MillicastPublisher::AudioGameCapturer*>(AudioSource.Get());
 			source->SetAudioSubmix(Submix);
 		}
 
@@ -233,7 +233,7 @@ void UMillicastPublisherSource::ChangeRenderTarget(UTextureRenderTarget2D* InRen
 	{
 		UE_LOG(LogMillicastPublisher, Log, TEXT("Changing render target"));
 		RenderTarget = InRenderTarget;
-		auto* src = static_cast<RenderTargetCapturer*>(VideoSource.Get());
+		auto* src = static_cast<MillicastPublisher::RenderTargetCapturer*>(VideoSource.Get());
 		src->SwitchTarget(RenderTarget);
 	}
 }

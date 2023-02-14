@@ -4,103 +4,108 @@
 
 #include "Tickable.h"
 
-class FRTCStatsCollector : public webrtc::RTCStatsCollectorCallback
+namespace MillicastPublisher
 {
-	double LastVideoStatTimestamp;
-	double LastAudioStatTimestamp;
 
-public:
-	FRTCStatsCollector(class FWebRTCPeerConnection* InPeerConnection);
-	~FRTCStatsCollector();
+	class FRTCStatsCollector : public webrtc::RTCStatsCollectorCallback
+	{
+		double LastVideoStatTimestamp;
+		double LastAudioStatTimestamp;
 
-	void Poll();
+	public:
+		FRTCStatsCollector(class FWebRTCPeerConnection* InPeerConnection);
+		~FRTCStatsCollector();
 
-	// Begin RTCStatsCollectorCallback interface
-	void OnStatsDelivered(const rtc::scoped_refptr<const webrtc::RTCStatsReport>& report) override;
-	void AddRef() const override;
-	rtc::RefCountReleaseStatus Release() const override;
-	// End RTCStatsCollectorCallback interface
+		void Poll();
 
-	double Rtt; // ms
-	size_t Width; // px
-	size_t Height; // px
-	size_t FramePerSecond;
-	double VideoBitrate; // bps
-	double AudioBitrate; // bps
-	double AudioTargetBitrate; // bps
-	double VideoTargetBitrate; // bps
-	size_t VideoTotalSent; // bytes
-	size_t AudioTotalSent; // bytes
-	int VideoPacketRetransmitted; // num packets
-	int AudioPacketRetransmitted; // num packets
-	FString VideoCodec; // mimetype
-	FString AudioCodec; // mimetype
-	int FramesDropped;
-	int VideoNackCount;
-	int AudioNackCount;
+		// Begin RTCStatsCollectorCallback interface
+		void OnStatsDelivered(const rtc::scoped_refptr<const webrtc::RTCStatsReport>& report) override;
+		void AddRef() const override;
+		rtc::RefCountReleaseStatus Release() const override;
+		// End RTCStatsCollectorCallback interface
 
-	double TotalEncodedFrames;
-	double AvgEncodeTime;
-	double TotalEncodeTime;
+		double Rtt; // ms
+		size_t Width; // px
+		size_t Height; // px
+		size_t FramePerSecond;
+		double VideoBitrate; // bps
+		double AudioBitrate; // bps
+		double AudioTargetBitrate; // bps
+		double VideoTargetBitrate; // bps
+		size_t VideoTotalSent; // bytes
+		size_t AudioTotalSent; // bytes
+		int VideoPacketRetransmitted; // num packets
+		int AudioPacketRetransmitted; // num packets
+		FString VideoCodec; // mimetype
+		FString AudioCodec; // mimetype
+		int FramesDropped;
+		int VideoNackCount;
+		int AudioNackCount;
 
-	TOptional<FString> QualityLimitationReason;
-	uint32 QualityLimitationResolutionChange;
-	TOptional<FString> ContentType;
+		double TotalEncodedFrames;
+		double AvgEncodeTime;
+		double TotalEncodeTime;
 
-	double Timestamp; // us
+		TOptional<FString> QualityLimitationReason;
+		uint32 QualityLimitationResolutionChange;
+		TOptional<FString> ContentType;
 
-	const FString& Cluster() const { return PeerConnection->ClusterId; }
-	const FString& Server() const { return PeerConnection->ServerId; }
+		double Timestamp; // us
 
-private:
-	mutable int32 RefCount;
-	FWebRTCPeerConnection* PeerConnection;
-};
+		const FString& Cluster() const { return PeerConnection->ClusterId; }
+		const FString& Server() const { return PeerConnection->ServerId; }
 
-/*
- * Some basic performance stats about how the publisher is running, e.g. how long capture/encode takes.
- * Stats are drawn to screen for now as it is useful to observe them in realtime.
- */
-class FPublisherStats : FTickableGameObject
-{
-public:
-	TArray<FRTCStatsCollector*> StatsCollectors;
+	private:
+		mutable int32 RefCount;
+		FWebRTCPeerConnection* PeerConnection;
+	};
 
-	void TextureReadbackStart();
-	void TextureReadbackEnd();
-	void FrameRendered();
+	/*
+	 * Some basic performance stats about how the publisher is running, e.g. how long capture/encode takes.
+	 * Stats are drawn to screen for now as it is useful to observe them in realtime.
+	 */
+	class FPublisherStats : FTickableGameObject
+	{
+	public:
+		TArray<FRTCStatsCollector*> StatsCollectors;
 
-	void SetEncoderStats(double LatencyMs, double BitrateMbps, int QP);
+		void TextureReadbackStart();
+		void TextureReadbackEnd();
+		void FrameRendered();
 
-private:
-	// Intent is to access through FPublisherStats::Get()
-	static FPublisherStats Instance;
+		void SetEncoderStats(double LatencyMs, double BitrateMbps, int QP);
 
-	uint64 TextureReadbackStartTime = 0;
-	int TextureReadbacks = 0;
-	double TextureReadbackAvg = 0;
-	
-	uint64 LastFrameRendered = 0;
-	int Frames = 0;
-	double SubmitFPS = 0;
+	private:
+		// Intent is to access through FPublisherStats::Get()
+		static FPublisherStats Instance;
 
-	int EncoderStatSamples = 0;
-	double EncoderLatencyMs = 0;
-	double EncoderBitrateMbps = 0;
-	double EncoderQP = 0;
+		uint64 TextureReadbackStartTime = 0;
+		int TextureReadbacks = 0;
+		double TextureReadbackAvg = 0;
 
-	bool bRegisterEngineStats = false;
+		uint64 LastFrameRendered = 0;
+		int Frames = 0;
+		double SubmitFPS = 0;
 
-	bool OnToggleStats(UWorld* World, FCommonViewportClient* ViewportClient, const TCHAR* Stream);
-	int32 OnRenderStats(UWorld* World, FViewport* Viewport, FCanvas* Canvas, int32 X, int32 Y, const FVector* ViewLocation, const FRotator* ViewRotation);
-	void RegisterEngineHooks();
+		int EncoderStatSamples = 0;
+		double EncoderLatencyMs = 0;
+		double EncoderBitrateMbps = 0;
+		double EncoderQP = 0;
 
-public:
-	static FPublisherStats& Get() { return Instance; }
+		bool bRegisterEngineStats = false;
 
-	void Tick(float DeltaTime);
-	FORCEINLINE TStatId GetStatId() const { RETURN_QUICK_DECLARE_CYCLE_STAT(MillicastProducerStats, STATGROUP_Tickables); }
+		bool OnToggleStats(UWorld* World, FCommonViewportClient* ViewportClient, const TCHAR* Stream);
+		int32 OnRenderStats(UWorld* World, FViewport* Viewport, FCanvas* Canvas, int32 X, int32 Y, const FVector* ViewLocation, const FRotator* ViewRotation);
+		void RegisterEngineHooks();
 
-	void RegisterStatsCollector(FRTCStatsCollector* Collector);
-	void UnregisterStatsCollector(FRTCStatsCollector* Collector);
-};
+	public:
+		static FPublisherStats& Get() { return Instance; }
+
+		void Tick(float DeltaTime);
+		FORCEINLINE TStatId GetStatId() const { RETURN_QUICK_DECLARE_CYCLE_STAT(MillicastProducerStats, STATGROUP_Tickables); }
+
+		void RegisterStatsCollector(FRTCStatsCollector* Collector);
+		void UnregisterStatsCollector(FRTCStatsCollector* Collector);
+	};
+
+}

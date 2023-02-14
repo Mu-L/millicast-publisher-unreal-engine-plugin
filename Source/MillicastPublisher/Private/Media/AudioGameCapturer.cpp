@@ -6,16 +6,19 @@
 
 #include "Util.h"
 
-TArray<Audio::FCaptureDeviceInfo> AudioDeviceCapture::CaptureDevices;
+namespace MillicastPublisher
+{
+	TArray<Audio::FCaptureDeviceInfo> AudioDeviceCapture::CaptureDevices;
+}
 
 IMillicastAudioSource* IMillicastAudioSource::Create(AudioCapturerType CapturerType)
 {
 	switch (CapturerType)
 	{
-	case AudioCapturerType::SUBMIX: return new AudioGameCapturer;
-	case AudioCapturerType::DEVICE: return new AudioDeviceCapture;
+	case AudioCapturerType::SUBMIX: return new MillicastPublisher::AudioGameCapturer;
+	case AudioCapturerType::DEVICE: return new MillicastPublisher::AudioDeviceCapture;
 #if PLATFORM_WINDOWS
-	case AudioCapturerType::LOOPBACK: return new WasapiDeviceCapture(10, true);
+	case AudioCapturerType::LOOPBACK: return new MillicastPublisher::WasapiDeviceCapture(10, true);
 #else
 	case AudioCapturerType::LOOPBACK: return nullptr;
 #endif
@@ -23,6 +26,9 @@ IMillicastAudioSource* IMillicastAudioSource::Create(AudioCapturerType CapturerT
 
 	return nullptr;
 }
+
+namespace MillicastPublisher
+{
 
 AudioCapturerBase::AudioCapturerBase() noexcept : RtcAudioSource(nullptr), RtcAudioTrack(nullptr)
 {}
@@ -241,6 +247,8 @@ TArray<Audio::FCaptureDeviceInfo>& AudioDeviceCapture::GetCaptureDevicesAvailabl
 	return CaptureDevices;
 }
 
+}
+
 #if PLATFORM_WINDOWS
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -275,6 +283,9 @@ TArray<Audio::FCaptureDeviceInfo>& AudioDeviceCapture::GetCaptureDevicesAvailabl
 
 #pragma comment(lib, "winmm.lib")
 #pragma comment(lib, "avrt.lib")
+
+namespace MillicastPublisher
+{
 
 extern const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
 extern const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
@@ -1077,6 +1088,8 @@ bool WasapiDeviceCapture::ColdInit()
 void WasapiDeviceCapture::ColdExit()
 {
 	sWcore.ColdExit();
+}
+
 }
 
 #endif

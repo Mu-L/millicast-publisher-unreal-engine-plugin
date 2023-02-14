@@ -5,11 +5,13 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Util.h"
 
-
 IMillicastVideoSource* IMillicastVideoSource::Create(UTextureRenderTarget2D* RenderTarget)
 {
-	return new RenderTargetCapturer(RenderTarget);
+	return new MillicastPublisher::RenderTargetCapturer(RenderTarget);
 }
+
+namespace MillicastPublisher
+{
 
 RenderTargetCapturer::RenderTargetCapturer(UTextureRenderTarget2D* InRenderTarget) noexcept
 	: RenderTarget(InRenderTarget)
@@ -94,4 +96,6 @@ void RenderTargetCapturer::OnEndFrameRenderThread()
 			RtcVideoSource->OnFrameReady(texture);
 		}
 	}
+}
+
 }

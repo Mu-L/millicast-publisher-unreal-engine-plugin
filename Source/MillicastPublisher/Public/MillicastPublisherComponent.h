@@ -11,8 +11,12 @@
 
 // Forward declarations
 class IWebSocket;
-class FWebRTCPeerConnection;
 class IHttpResponse;
+
+namespace MillicastPublisher
+{
+	class FWebRTCPeerConnection;
+}
 
 // Event declaration
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE(FMillicastPublisherComponentAuthenticated, UMillicastPublisherComponent, OnAuthenticated);
@@ -175,7 +179,7 @@ private:
 	FDelegateHandle OnMessageHandle;
 
 	/** WebRTC */
-	FWebRTCPeerConnection* PeerConnection;
+	MillicastPublisher::FWebRTCPeerConnection* PeerConnection;
 	webrtc::PeerConnectionInterface::RTCConfiguration PeerConnectionConfig;
 
 	/** Publisher */

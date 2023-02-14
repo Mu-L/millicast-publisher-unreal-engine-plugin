@@ -10,8 +10,11 @@
 // Maybe return a TUniquePtr or Shared or somehting less ... raw
 IMillicastVideoSource* IMillicastVideoSource::Create()
 {
-	return new SlateWindowVideoCapturer;
+	return new MillicastPublisher::SlateWindowVideoCapturer;
 }
+
+namespace MillicastPublisher
+{
 
 IMillicastSource::FStreamTrackInterface SlateWindowVideoCapturer::StartCapture()
 {
@@ -70,3 +73,4 @@ void SlateWindowVideoCapturer::OnBackBufferReadyToPresent(SWindow& SlateWindow, 
 	}
 }
 
+}

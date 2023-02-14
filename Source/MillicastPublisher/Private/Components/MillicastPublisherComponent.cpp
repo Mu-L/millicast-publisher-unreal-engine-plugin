@@ -52,7 +52,7 @@ UMillicastPublisherComponent::UMillicastPublisherComponent(const FObjectInitiali
 	EventBroadcaster.Emplace("inactive", [this](TSharedPtr<FJsonObject> Msg) { ParseInactiveEvent(Msg); });
 	EventBroadcaster.Emplace("viewercount", [this](TSharedPtr<FJsonObject> Msg) { ParseViewerCountEvent(Msg); });
 
-	PeerConnectionConfig = FWebRTCPeerConnection::GetDefaultConfig();
+	PeerConnectionConfig = MillicastPublisher::FWebRTCPeerConnection::GetDefaultConfig();
 }
 
 UMillicastPublisherComponent::~UMillicastPublisherComponent()
@@ -102,16 +102,16 @@ void UMillicastPublisherComponent::SetupIceServersFromJson(TArray<TSharedPtr<FJs
 		{
 			for (auto& url : iceServerUrls)
 			{
-				iceServer.urls.push_back(to_string(url));
+				iceServer.urls.push_back(MillicastPublisher::to_string(url));
 			}
 		}
 		if (hasUsername)
 		{
-			iceServer.username = to_string(iceServerUsername);
+			iceServer.username = MillicastPublisher::to_string(iceServerUsername);
 		}
 		if (hasPassword)
 		{
-			iceServer.password = to_string(iceServerPassword);
+			iceServer.password = MillicastPublisher::to_string(iceServerPassword);
 		}
 
 		PeerConnectionConfig.servers.push_back(iceServer);
@@ -290,7 +290,7 @@ bool UMillicastPublisherComponent::StartWebSocketConnection(const FString& Url,
 bool UMillicastPublisherComponent::PublishToMillicast()
 {
 	PeerConnection =
-		FWebRTCPeerConnection::Create(PeerConnectionConfig);
+		MillicastPublisher::FWebRTCPeerConnection::Create(PeerConnectionConfig);
 
 	// Starts the capture first and add track to the peerconnection
 	// TODO: add a boolean to let choose autoplay or not
@@ -368,7 +368,7 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 		// Fill signaling data
 		auto DataJson = MakeShared<FJsonObject>();
 		DataJson->SetStringField("name", WeakThis->MillicastMediaSource->StreamName);
-		DataJson->SetStringField("sdp", ToString(sdp));
+		DataJson->SetStringField("sdp", MillicastPublisher::ToString(sdp));
 		DataJson->SetArrayField("events", eventsJson);
 
 		// If multisource feature
@@ -395,7 +395,7 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 	LocalDescriptionObserver->SetOnFailureCallback([WEAK_CAPTURE](const std::string& err) {
 		if (WeakThis.IsValid())
 		{
-			UE_LOG(LogMillicastPublisher, Error, TEXT("Set local description failed : %s"), *ToString(err));
+			UE_LOG(LogMillicastPublisher, Error, TEXT("Set local description failed : %s"), *MillicastPublisher::ToString(err));
 			WeakThis->OnPublishingError.Broadcast(TEXT("Could not set local description"));
 		}
 	});
@@ -410,7 +410,7 @@ bool UMillicastPublisherComponent::PublishToMillicast()
 		}
 	});
 	RemoteDescriptionObserver->SetOnFailureCallback([WEAK_CAPTURE](const std::string& err) {
-		UE_LOG(LogMillicastPublisher, Error, TEXT("Set remote description failed : %s"), *ToString(err));
+		UE_LOG(LogMillicastPublisher, Error, TEXT("Set remote description failed : %s"), *MillicastPublisher::ToString(err));
 		if (WeakThis.IsValid())
 		{
 			WeakThis->OnPublishingError.Broadcast(TEXT("Could not set remote description"));
@@ -492,7 +492,7 @@ void UMillicastPublisherComponent::OnMessage(const FString& Msg)
 		FScopeLock Lock(&CriticalSection);
 		if (PeerConnection) 
 		{
-			PeerConnection->SetRemoteDescription(to_string(Sdp));
+			PeerConnection->SetRemoteDescription(MillicastPublisher::to_string(Sdp));
 			PeerConnection->ServerId = MoveTemp(ServerId);
 			PeerConnection->ClusterId = MoveTemp(ClusterId);
 		}

@@ -5,23 +5,28 @@
 #include "IMillicastSource.h"
 #include "WebRTC/Texture2DVideoSourceAdapter.h"
 
-/**
-* This class is a video source capturer and captures video from the Slate Window renderer
-*/
-class SlateWindowVideoCapturer : public IMillicastVideoSource
+namespace MillicastPublisher
 {
-	rtc::scoped_refptr<FTexture2DVideoSourceAdapter> RtcVideoSource;
-	FVideoTrackInterface RtcVideoTrack;
-	FCriticalSection CriticalSection;
 
-public:
-	SlateWindowVideoCapturer() noexcept : RtcVideoSource(nullptr), RtcVideoTrack(nullptr) {}
+	/**
+	* This class is a video source capturer and captures video from the Slate Window renderer
+	*/
+	class SlateWindowVideoCapturer : public ::IMillicastVideoSource
+	{
+		rtc::scoped_refptr<FTexture2DVideoSourceAdapter> RtcVideoSource;
+		FVideoTrackInterface RtcVideoTrack;
+		FCriticalSection CriticalSection;
 
-	FStreamTrackInterface StartCapture() override;
-	void StopCapture() override;
-	FStreamTrackInterface GetTrack() override;
+	public:
+		SlateWindowVideoCapturer() noexcept : RtcVideoSource(nullptr), RtcVideoTrack(nullptr) {}
 
-private:
-	/** Callback from the SlateWindowRenderer when a new frame buffer is ready */
-	void OnBackBufferReadyToPresent(SWindow& SlateWindow, const FTexture2DRHIRef& Buffer);
-};
+		FStreamTrackInterface StartCapture() override;
+		void StopCapture() override;
+		FStreamTrackInterface GetTrack() override;
+
+	private:
+		/** Callback from the SlateWindowRenderer when a new frame buffer is ready */
+		void OnBackBufferReadyToPresent(SWindow& SlateWindow, const FTexture2DRHIRef& Buffer);
+	};
+
+}

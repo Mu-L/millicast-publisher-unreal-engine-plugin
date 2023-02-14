@@ -6,6 +6,9 @@
 #include "MillicastPublisherPrivate.h"
 #include "Stats.h"
 
+namespace MillicastPublisher
+{
+
 FTexture2DVideoSourceAdapter::FTexture2DVideoSourceAdapter() noexcept
 	: AsyncTextureReadback(MakeShared<FAsyncTextureReadback>())
 {
@@ -45,4 +48,6 @@ bool FTexture2DVideoSourceAdapter::AdaptVideoFrame(int64 TimestampUs, FIntPoint 
 	int out_width, out_height, crop_width, crop_height, crop_x, crop_y;
 	return rtc::AdaptedVideoTrackSource::AdaptFrame(Resolution.X, Resolution.Y, TimestampUs,
 		 &out_width, &out_height, &crop_width, &crop_height, &crop_x, &crop_y);
+}
+
 }

@@ -11,6 +11,9 @@ DEFINE_LOG_CATEGORY(LogMillicastPublisherStats);
 
 CSV_DEFINE_CATEGORY(Millicast_Publisher, false);
 
+namespace MillicastPublisher
+{
+
 FPublisherStats FPublisherStats::Instance;
 
 double CalcEMA(double PrevAvg, int NumSamples, double Value)
@@ -365,4 +368,6 @@ rtc::RefCountReleaseStatus FRTCStatsCollector::Release() const
 	}
 
 	return rtc::RefCountReleaseStatus::kOtherRefsRemained;
+}
+
 }
