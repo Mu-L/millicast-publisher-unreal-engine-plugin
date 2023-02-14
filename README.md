@@ -3,6 +3,16 @@
 * Supported UE version 4.27
 * Supported on Windows and Linux
 
+## Supported codec
+
+### Video
+
+* VP8 (software encoding)
+
+### Audio
+
+* Opus
+
 This plugin enable to publish game audio and video content to Millicast.
 You can configure your credentials and configure your game logic using unreal object, capture and publish from virtual camera.
 
