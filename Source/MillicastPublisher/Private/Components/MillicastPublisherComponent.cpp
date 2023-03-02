@@ -23,9 +23,80 @@
 #include "Interfaces/IPluginManager.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "api/frame_transformer_interface.h"
+
 #define WEAK_CAPTURE WeakThis = TWeakObjectPtr<UMillicastPublisherComponent>(this)
 
 constexpr auto HTTP_OK = 200;
+
+class FrameTransformer : public webrtc::FrameTransformerInterface
+{
+	rtc::scoped_refptr<webrtc::TransformedFrameCallback> Callback;
+	std::unordered_map < uint64, rtc::scoped_refptr<webrtc::TransformedFrameCallback>> Callbacks;
+
+public:
+	FrameTransformer() noexcept
+	{
+
+	}
+
+	~FrameTransformer() noexcept override
+	{
+
+	}
+
+	// Inherited via FrameTransformerInterface
+	void Transform(std::unique_ptr<webrtc::TransformableFrameInterface> transformable_frame) override
+	{
+		/*if (Callback)
+		{
+			Callback->OnTransformedFrame(std::move(transformable_frame));
+		}*/
+
+		auto ssrc = transformable_frame->GetSsrc();
+
+		if (auto it = Callbacks.find(ssrc); it != Callbacks.end())
+		{
+			static uint8_t i = 0;
+
+			auto DataView = transformable_frame->GetData();
+			std::vector<uint8_t> Data;
+			std::copy(DataView.begin(), DataView.end(), std::back_inserter(Data));
+			Data.push_back(i++);
+
+			rtc::ArrayView<uint8_t> ArrayView(Data.data(), Data.size());
+
+			transformable_frame->SetData(ArrayView);
+
+			UE_LOG(LogMillicastPublisher, Log, TEXT("Transforming frame : %ld %ld"), ArrayView[ArrayView.size() - 1], ArrayView.size());
+
+			it->second->OnTransformedFrame(std::move(transformable_frame));
+		}
+	}
+
+	void RegisterTransformedFrameCallback(rtc::scoped_refptr<webrtc::TransformedFrameCallback> InCallback)
+	{
+		UE_LOG(LogMillicastPublisher, Log, TEXT("Registering transformer callback %x"), InCallback.get());
+		Callback = InCallback;
+	}
+
+	void RegisterTransformedFrameSinkCallback(rtc::scoped_refptr<webrtc::TransformedFrameCallback> InCallback, uint32_t ssrc) 
+	{
+		UE_LOG(LogMillicastPublisher, Log, TEXT("Registering transformer callback with ssrc %x %ld"), InCallback.get(), ssrc);
+		Callbacks[ssrc] = InCallback;
+	}
+
+	void UnregisterTransformedFrameCallback() 
+	{
+
+	}
+
+	void UnregisterTransformedFrameSinkCallback(uint32_t ssrc) 
+	{
+
+	}
+
+};
 
 inline FString ToString(EMillicastVideoCodecs Codec)
 {
@@ -654,6 +725,10 @@ void UMillicastPublisherComponent::CaptureAndAddTracks()
 		{
 			UE_LOG(LogMillicastPublisher, Log, TEXT("Add transceiver for %s track : %s"), 
 				*FString( Track->kind().c_str() ), *FString( Track->id().c_str() ) );
+
+			auto Transformer = rtc::make_ref_counted<FrameTransformer>();
+			auto Transceiver = result.value();
+			Transceiver->sender()->SetEncoderToPacketizerFrameTransformer(Transformer);
 		}
 		else
 		{
